@@ -1,6 +1,8 @@
 EmpiricalCalibration
 ====================
 
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/EmpiricalCalibration)](http://cran.r-project.org/package=EmpiricalCalibration)
+
 Introduction
 ============
 
@@ -41,7 +43,13 @@ Requires [R](http://cran.r-project.org/) (version 3.1.0 or newer).
 
 Getting Started
 ===============
-In R, use the following commands to install this package:
+In R, use the following commands to install the latest stable version from CRAN:
+
+```r
+install.packages("EmpiricalCalibration")
+```
+
+To install the latest development version directly from GitHub, use:
 
 ```r
 install.packages("devtools")
@@ -51,7 +59,7 @@ install_github("ohdsi/EmpiricalCalibration")
   
 Getting Involved
 ================
-* Vignette: [Empirical calibration](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/extras/EmpiricalCalibrationVignette.pdf)
+* Vignette: [Empirical calibration](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/inst/doc/EmpiricalCalibrationVignette.pdf)
 * Package manual: [EmpiricalCalibration.pdf](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/extras/EmpiricalCalibration.pdf) 
 * Developer questions/comments/feedback: <a href="http://forums.ohdsi.org/c/developers">OHDSI Forum</a>
 * We use the <a href="../../issues">GitHub issue tracker</a> for all bugs/issues/enhancements

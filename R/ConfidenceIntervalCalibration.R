@@ -40,11 +40,35 @@
 #'
 #' @export
 fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
-
+  if (any(is.infinite(seLogRr))) {
+    warning("Estimate(s) with infinite standard error detected. Removing before fitting error model")
+    trueLogRr <- trueLogRr[!is.infinite(seLogRr)]
+    logRr <- logRr[!is.infinite(seLogRr)]
+    seLogRr <- seLogRr[!is.infinite(seLogRr)]
+  }
+  if (any(is.infinite(logRr))) {
+    warning("Estimate(s) with infinite logRr detected. Removing before fitting error model")
+    trueLogRr <- trueLogRr[!is.infinite(logRr)]
+    seLogRr <- seLogRr[!is.infinite(logRr)]
+    logRr <- logRr[!is.infinite(logRr)]
+  }
+  if (any(is.na(seLogRr))) {
+    warning("Estimate(s) with NA standard error detected. Removing before fitting error model")
+    trueLogRr <- trueLogRr[!is.na(seLogRr)]
+    logRr <- logRr[!is.na(seLogRr)]
+    seLogRr <- seLogRr[!is.na(seLogRr)]
+  }
+  if (any(is.na(logRr))) {
+    warning("Estimate(s) with NA logRr detected. Removing before fitting error model")
+    trueLogRr <- trueLogRr[!is.na(logRr)]
+    seLogRr <- seLogRr[!is.na(logRr)]
+    logRr <- logRr[!is.na(logRr)]
+  }
+  
   gaussianProduct <- function(mu1, mu2, sd1, sd2) {
     (2 * pi)^(-1/2) * (sd1^2 + sd2^2)^(-1/2) * exp(-(mu1 - mu2)^2/(2 * (sd1^2 + sd2^2)))
   }
-
+  
   LL <- function(theta, logRr, seLogRr, trueLogRr) {
     result <- 0
     for (i in 1:length(logRr)) {
@@ -78,6 +102,7 @@ fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
 #' @param seLogRr   The standard error of the log of the effect estimates. Hint: often the standard
 #'                  error = (log(<lower bound 95 percent confidence interval>) - log(<effect
 #'                  estimate>))/qnorm(0.025).
+#' @param ciWidth   The width of the confidence interval. Typically this would be .95, for the 95 percent confidence interval.
 #' @param model     An object of type \code{systematicErrorModel} as created by the
 #'                  \code{\link{fitSystematicErrorModel}} function.
 #'
@@ -92,43 +117,25 @@ fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
 #' result
 #'
 #' @export
-calibrateConfidenceInterval <- function(logRr, seLogRr, model) {
-  statisticsConfidenceIntervals <- FALSE
-  cal <- function(quantile, logRR, se, interceptLogRR, slopeLogRR, interceptSD, slopeSD) {
-    z <- qnorm(quantile)
+calibrateConfidenceInterval <- function(logRr, seLogRr, model, ciWidth = 0.95) {
+  logLowerBound <- function(ciWidth, logRR, se, interceptLogRR, slopeLogRR, interceptSD, slopeSD) {
+    z <- qnorm((1-ciWidth)/2)
     (-sqrt((interceptLogRR - logRR)^2 * slopeSD^2 * z^2 - 2 * (interceptLogRR - logRR) * slopeLogRR *
-      interceptSD * slopeSD * z^2 + slopeLogRR^2 * interceptSD^2 * z^2 + slopeLogRR^2 * se^2 *
-      z^2 - slopeSD^2 * se^2 * z^4) - (interceptLogRR - logRR) * slopeLogRR + interceptSD * slopeSD *
+             interceptSD * slopeSD * z^2 + slopeLogRR^2 * interceptSD^2 * z^2 + slopeLogRR^2 * se^2 *
+             z^2 - slopeSD^2 * se^2 * z^4) - (interceptLogRR - logRR) * slopeLogRR + interceptSD * slopeSD *
       z^2)/(slopeLogRR^2 - slopeSD^2 * z^2)
+  }
+  logUpperBound <- function(ciWidth, logRR, se, interceptLogRR, slopeLogRR, interceptSD, slopeSD) {
+    z <- qnorm((1-ciWidth)/2)
+    (sqrt((interceptLogRR-logRR)^2*slopeSD^2*z^2 - 2*(interceptLogRR-logRR)*slopeLogRR*interceptSD*slopeSD*z^2 + slopeLogRR^2*interceptSD^2*z^2 +
+            slopeLogRR^2*se^2*z^2 - slopeSD^2*se^2*z^4) - (interceptLogRR-logRR)*slopeLogRR + interceptSD*slopeSD*z^2) / (slopeLogRR^2-slopeSD^2*z^2)
   }
   result <- data.frame(logRr = rep(0, length(logRr)), logLb95Rr = 0, logUb95Rr = 0)
   for (i in 1:nrow(result)) {
-    result$logRr[i] <- cal(0.5, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
-    result$logLb95Rr[i] <- cal(0.025, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
-    result$logUb95Rr[i] <- cal(0.975, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
+    result$logRr[i] <- logUpperBound(0, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
+    result$logLb95Rr[i] <- logLowerBound(ciWidth, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
+    result$logUb95Rr[i] <- logUpperBound(ciWidth, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
   }
-  result$seLogRr <- (result$logLb95Rr - result$logRr)/qnorm(0.025)
-  # Experimental: currently doesn't work because we get negative standard deviations
-  if (statisticsConfidenceIntervals) {
-    result$logRr_lb95 <- 0
-    result$logRr_ub95 <- 0
-    result$logLb95Rr_lb95 <- 0
-    result$logLb95Rr_ub95 <- 0
-    result$logUb95Rr_lb95 <- 0
-    result$logUb95Rr_ub95 <- 0
-    rand <- MASS::mvrnorm(10000, model, attr(model, "CovarianceMatrix"))
-    for (i in 1:nrow(result)) {
-      logRr <- cal(0.5, logRr[i], seLogRr[i], rand[1], rand[2], rand[3], rand[4])
-      logLb95Rr <- cal(0.025, logRr[i], seLogRr[i], rand[1], rand[2], rand[3], rand[4])
-      logUb95Rr <- cal(0.975, logRr[i], seLogRr[i], rand[1], rand[2], rand[3], rand[4])
-
-      result$logRr_lb95 <- quantile(logRr, 0.025)
-      result$logRr_ub95 <- quantile(logRr, 0.975)
-      result$logLb95Rr_lb95 <- quantile(logLb95Rr, 0.025)
-      result$logLb95Rr_ub95 <- quantile(logLb95Rr, 0.975)
-      result$logUb95Rr_lb95 <- quantile(logUb95Rr, 0.025)
-      result$logUb95Rr_ub95 <- quantile(logUb95Rr, 0.975)
-    }
-  }
+  result$seLogRr <- (result$logLb95Rr - result$logUb95Rr)/(2*qnorm((1-ciWidth)/2))
   return(result)
 }
