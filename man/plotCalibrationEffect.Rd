@@ -5,7 +5,7 @@
 \title{Plot the effect of the calibration}
 \usage{
 plotCalibrationEffect(logRrNegatives, seLogRrNegatives, logRrPositives,
-  seLogRrPositives, null = NULL, xLabel = "Relative risk",
+  seLogRrPositives, null = NULL, xLabel = "Relative risk", title,
   showCis = FALSE, fileName = NULL)
 }
 \arguments{
@@ -22,9 +22,12 @@ scale.}
 controls.}
 
 \item{null}{An object representing the fitted null distribution as created by the
-\code{fitNull} function. If not provided, a null will be fitted before plotting.}
+\code{fitNull} function. If not provided, a null will be fitted before
+plotting.}
 
 \item{xLabel}{The label on the x-axis: the name of the effect estimate.}
+
+\item{title}{Optional: the main title for the plot}
 
 \item{showCis}{Show 95 percent credible intervals for the calibrated p = 0.05 boundary.}
 
@@ -51,4 +54,3 @@ positive <- sccs[sccs$groundTruth == 1, ]
 plotCalibrationEffect(negatives$logRr, negatives$seLogRr, positive$logRr, positive$seLogRr)
 
 }
-

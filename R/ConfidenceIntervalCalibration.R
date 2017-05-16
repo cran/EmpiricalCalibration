@@ -1,6 +1,6 @@
 # @file ConfidenceIntervalCalibration.R
 #
-# Copyright 2015 Observational Health Data Sciences and Informatics
+# Copyright 2017 Observational Health Data Sciences and Informatics
 #
 # This file is part of EmpiricalCalibration
 # 
@@ -19,16 +19,18 @@
 #' Fit a systematic error model
 #'
 #' @details
-#' Fit a model of the systematic error as a function of true effect size. This model is an extention
-#' of the method for fitting the null distribution. The mean and standard deviations of the error
+#' Fit a model of the systematic error as a function of true effect size. This model is an extension
+#' of the method for fitting the null distribution. The mean and log(standard deviations) of the error
 #' distributions are assumed to be linear with respect to the true effect size, and each component is
 #' therefore represented by an intercept and a slope.
 #'
-#' @param logRr       A numeric vector of effect estimates on the log scale.
-#' @param seLogRr     The standard error of the log of the effect estimates. Hint: often the standard
-#'                    error = (log(<lower bound 95 percent confidence interval>) - log(<effect
-#'                    estimate>))/qnorm(0.025).
-#' @param trueLogRr   A vector of the true effect sizes.
+#' @param logRr                      A numeric vector of effect estimates on the log scale.
+#' @param seLogRr                    The standard error of the log of the effect estimates. Hint: often
+#'                                   the standard error = (log(<lower bound 95 percent confidence
+#'                                   interval>) - log(<effect estimate>))/qnorm(0.025).
+#' @param estimateCovarianceMatrix   should a covariance matrix be computed? If so, confidence
+#'                                   intervals for the model parameters will be available.
+#' @param trueLogRr                  A vector of the true effect sizes.
 #'
 #' @return
 #' An object of type \code{systematicErrorModel}.
@@ -39,7 +41,7 @@
 #' model
 #'
 #' @export
-fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
+fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr, estimateCovarianceMatrix = TRUE) {
   if (any(is.infinite(seLogRr))) {
     warning("Estimate(s) with infinite standard error detected. Removing before fitting error model")
     trueLogRr <- trueLogRr[!is.infinite(seLogRr)]
@@ -73,22 +75,33 @@ fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
     result <- 0
     for (i in 1:length(logRr)) {
       mean <- theta[1] + theta[2] * trueLogRr[i]
-      sd <- theta[3] + theta[4] * trueLogRr[i]
+      sd <- exp(theta[3] + theta[4] * trueLogRr[i])
       result <- result - log(gaussianProduct(logRr[i], mean, seLogRr[i], sd))
     }
     if (is.infinite(result))
       result <- 99999
     result
   }
-  theta <- c(0, 1, 0.5, 0)
-  fit <- optim(theta, LL, logRr = logRr, seLogRr = seLogRr, trueLogRr = trueLogRr, hessian = TRUE)
+  theta <- c(0, 1, -2, 0)
+  fit <- optim(theta,
+               LL,
+               logRr = logRr,
+               seLogRr = seLogRr,
+               trueLogRr = trueLogRr,
+               method = "BFGS",
+               hessian = TRUE,
+               control = list(parscale = c(1, 1, 10, 10)))
   fisher_info <- solve(fit$hessian)
   prop_sigma <- sqrt(diag(fisher_info))
   model <- fit$par
-  names(model) <- c("meanIntercept", "meanSlope", "sdIntercept", "sdSlope")
-  attr(model, "LB95CI") <- fit$par + qnorm(0.025) * prop_sigma
-  attr(model, "UB95CI") <- fit$par + qnorm(0.975) * prop_sigma
-  attr(model, "CovarianceMatrix") <- fisher_info
+  names(model) <- c("meanIntercept", "meanSlope", "logSdIntercept", "logSdSlope")
+  if (estimateCovarianceMatrix) {
+    fisher_info <- solve(fit$hessian)
+    prop_sigma <- sqrt(diag(fisher_info))
+    attr(model, "CovarianceMatrix") <- fisher_info
+    attr(model, "LB95CI") <- fit$par + qnorm(0.025) * prop_sigma
+    attr(model, "UB95CI") <- fit$par + qnorm(0.975) * prop_sigma
+  }
   class(model) <- "systematicErrorModel"
   model
 }
@@ -102,7 +115,8 @@ fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
 #' @param seLogRr   The standard error of the log of the effect estimates. Hint: often the standard
 #'                  error = (log(<lower bound 95 percent confidence interval>) - log(<effect
 #'                  estimate>))/qnorm(0.025).
-#' @param ciWidth   The width of the confidence interval. Typically this would be .95, for the 95 percent confidence interval.
+#' @param ciWidth   The width of the confidence interval. Typically this would be .95, for the 95
+#'                  percent confidence interval.
 #' @param model     An object of type \code{systematicErrorModel} as created by the
 #'                  \code{\link{fitSystematicErrorModel}} function.
 #'
@@ -118,24 +132,117 @@ fitSystematicErrorModel <- function(logRr, seLogRr, trueLogRr) {
 #'
 #' @export
 calibrateConfidenceInterval <- function(logRr, seLogRr, model, ciWidth = 0.95) {
-  logLowerBound <- function(ciWidth, logRR, se, interceptLogRR, slopeLogRR, interceptSD, slopeSD) {
-    z <- qnorm((1-ciWidth)/2)
-    (-sqrt((interceptLogRR - logRR)^2 * slopeSD^2 * z^2 - 2 * (interceptLogRR - logRR) * slopeLogRR *
-             interceptSD * slopeSD * z^2 + slopeLogRR^2 * interceptSD^2 * z^2 + slopeLogRR^2 * se^2 *
-             z^2 - slopeSD^2 * se^2 * z^4) - (interceptLogRR - logRR) * slopeLogRR + interceptSD * slopeSD *
-      z^2)/(slopeLogRR^2 - slopeSD^2 * z^2)
+
+  opt <- function(x,
+                  z,
+                  logRr,
+                  se,
+                  interceptMean,
+                  slopeMean,
+                  interceptLogSd,
+                  slopeLogSd) {
+    mean <- interceptMean + slopeMean * x
+    sd <- exp(interceptLogSd + slopeLogSd * x)
+    return(z + (mean - logRr)/sqrt((sd)^2 + (se)^2))
   }
-  logUpperBound <- function(ciWidth, logRR, se, interceptLogRR, slopeLogRR, interceptSD, slopeSD) {
-    z <- qnorm((1-ciWidth)/2)
-    (sqrt((interceptLogRR-logRR)^2*slopeSD^2*z^2 - 2*(interceptLogRR-logRR)*slopeLogRR*interceptSD*slopeSD*z^2 + slopeLogRR^2*interceptSD^2*z^2 +
-            slopeLogRR^2*se^2*z^2 - slopeSD^2*se^2*z^4) - (interceptLogRR-logRR)*slopeLogRR + interceptSD*slopeSD*z^2) / (slopeLogRR^2-slopeSD^2*z^2)
+  
+  logBound <- function(ciWidth,
+                       lb = TRUE,
+                       logRr,
+                       se,
+                       interceptMean,
+                       slopeMean,
+                       interceptLogSd,
+                       slopeLogSd) {
+    z <- qnorm((1 - ciWidth)/2)
+    if (lb) {
+      z <- -z
+    }
+    # Simple grid search for upper bound where opt is still positive:
+    upper <- -9
+    while(opt(x = upper,
+              z = z,
+              logRr = logRr,
+              se = se,
+              interceptMean = interceptMean,
+              slopeMean = slopeMean,
+              interceptLogSd = interceptLogSd,
+              slopeLogSd = slopeLogSd) < 0) {
+      upper <- upper + 1
+    }
+    
+    uniroot(f = opt,
+            interval = c(-10, upper),
+            z = z,
+            logRr = logRr,
+            se = se,
+            interceptMean = interceptMean,
+            slopeMean = slopeMean,
+            interceptLogSd = interceptLogSd,
+            slopeLogSd = slopeLogSd)$root
   }
+  
   result <- data.frame(logRr = rep(0, length(logRr)), logLb95Rr = 0, logUb95Rr = 0)
   for (i in 1:nrow(result)) {
-    result$logRr[i] <- logUpperBound(0, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
-    result$logLb95Rr[i] <- logLowerBound(ciWidth, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
-    result$logUb95Rr[i] <- logUpperBound(ciWidth, logRr[i], seLogRr[i], model[1], model[2], model[3], model[4])
+    if (is.infinite(logRr[i]) || is.na(logRr[i]) || is.infinite(seLogRr[i]) || is.na(seLogRr[i])) {
+      result$logRr[i] <- NA
+      result$logLb95Rr[i] <- NA
+      result$logUb95Rr[i] <- NA
+    } else {
+      result$logRr[i] <- logBound(0,
+                                  TRUE,
+                                  logRr[i],
+                                  seLogRr[i],
+                                  model[1],
+                                  model[2],
+                                  model[3],
+                                  model[4])
+      result$logLb95Rr[i] <- logBound(ciWidth,
+                                      TRUE,
+                                      logRr[i],
+                                      seLogRr[i],
+                                      model[1],
+                                      model[2],
+                                      model[3],
+                                      model[4])
+      result$logUb95Rr[i] <- logBound(ciWidth,
+                                      FALSE,
+                                      logRr[i],
+                                      seLogRr[i],
+                                      model[1],
+                                      model[2],
+                                      model[3],
+                                      model[4])
+    }
   }
-  result$seLogRr <- (result$logLb95Rr - result$logUb95Rr)/(2*qnorm((1-ciWidth)/2))
+  result$seLogRr <- (result$logLb95Rr - result$logUb95Rr)/(2 * qnorm((1 - ciWidth)/2))
   return(result)
+}
+
+#' Compute the (traditional) confidence interval
+#'
+#' @description
+#' \code{computeTraditionalCi} computes the traditional confidence interval based on the log of the
+#' relative risk and the standerd error of the log of the relative risk.
+#'
+#' @param logRr     A numeric vector of one or more effect estimates on the log scale
+#' @param seLogRr   The standard error of the log of the effect estimates. Hint: often the standard
+#'                  error = (log(<lower bound 95 percent confidence interval>) - log(<effect
+#'                  estimate>))/qnorm(0.025)
+#' @param ciWidth   The width of the confidence interval. Typically this would be .95, for the 95
+#'                  percent confidence interval.
+#'
+#' @return
+#' The point estimate and confidence interval
+#'
+#' @examples
+#' data(sccs)
+#' positive <- sccs[sccs$groundTruth == 1, ]
+#' computeTraditionalCi(positive$logRr, positive$seLogRr)
+#'
+#' @export
+computeTraditionalCi <- function(logRr, seLogRr, ciWidth = .95) {
+  return(c(rr = exp(logRr), 
+           lb = exp(logRr - qnorm(1  -ciWidth/2)*seLogRr), 
+           ub = exp(logRr + qnorm(1 - ciWidth/2)*seLogRr)))
 }

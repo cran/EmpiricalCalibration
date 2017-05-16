@@ -48,6 +48,14 @@ plotMcmcTrace(null)
 p <- calibrateP(null, drugOfInterest$logRr, drugOfInterest$seLogRr)
 p
 
+## ------------------------------------------------------------------------
+plotCalibrationEffect(negatives$logRr,
+                      negatives$seLogRr, 
+                      drugOfInterest$logRr, 
+                      drugOfInterest$seLogRr, 
+                      null,
+                      showCis = TRUE)
+
 ## ----tidy=TRUE,evale=TRUE------------------------------------------------
 citation("EmpiricalCalibration")
 

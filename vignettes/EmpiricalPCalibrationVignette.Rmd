@@ -1,5 +1,5 @@
 ---
-title: "Empirical calibration"
+title: "Empirical calibration of p-values"
 author: "Martijn J. Schuemie, Marc A. Suchard"
 date: "`r Sys.Date()`"
 output:
@@ -7,7 +7,7 @@ output:
     number_sections: yes
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{Empirical calibration}
+  %\VignetteIndexEntry{Empirical calibration of p-values}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -142,7 +142,18 @@ p <- calibrateP(null, drugOfInterest$logRr, drugOfInterest$seLogRr)
 p
 ```
 
-Note that there is uncertainty around the calibrated p-value as expressed in the 95% credible interval.
+Note that there is uncertainty around the calibrated p-value as expressed in the 95% credible interval. 
+
+We can also visualize the uncertainty in the p-value calibration by plotting the 95% credible interval of the boundary where calibrated p = 0.05, here indicated by the red band:
+
+```{r}
+plotCalibrationEffect(negatives$logRr,
+                      negatives$seLogRr, 
+                      drugOfInterest$logRr, 
+                      drugOfInterest$seLogRr, 
+                      null,
+                      showCis = TRUE)
+```
 
 # References
 

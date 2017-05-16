@@ -1,7 +1,7 @@
 EmpiricalCalibration
 ====================
 
-[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/EmpiricalCalibration)](http://cran.r-project.org/package=EmpiricalCalibration)
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/EmpiricalCalibration)](https://cran.r-project.org/package=EmpiricalCalibration)
 
 Introduction
 ============
@@ -39,7 +39,7 @@ This is a pure R package.
 
 System requirements
 ===================
-Requires [R](http://cran.r-project.org/) (version 3.1.0 or newer).
+Requires R (version 3.1.0 or newer).
 
 Getting Started
 ===============
@@ -59,7 +59,8 @@ install_github("ohdsi/EmpiricalCalibration")
   
 Getting Involved
 ================
-* Vignette: [Empirical calibration](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/inst/doc/EmpiricalCalibrationVignette.pdf)
+* Vignette: [Empirical calibration of p-values](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/inst/doc/EmpiricalPCalibrationVignette.pdf)
+* Vignette: [Empirical calibration of confidence intervals](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/inst/doc/EmpiricalCiCalibrationVignette.pdf)
 * Package manual: [EmpiricalCalibration.pdf](https://raw.githubusercontent.com/OHDSI/EmpiricalCalibration/master/extras/EmpiricalCalibration.pdf) 
 * Developer questions/comments/feedback: <a href="http://forums.ohdsi.org/c/developers">OHDSI Forum</a>
 * We use the <a href="../../issues">GitHub issue tracker</a> for all bugs/issues/enhancements
@@ -71,7 +72,8 @@ EmpiricalCalibration is licensed under Apache License 2.0
 Development
 ===========
 This package has been developed in RStudio.
-###Development status
+
+### Development status
 [![Build Status](https://travis-ci.org/OHDSI/EmpiricalCalibration.svg?branch=master)](https://travis-ci.org/OHDSI/EmpiricalCalibration)
 
 This package is ready for use.
