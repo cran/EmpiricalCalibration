@@ -94,59 +94,11 @@ plotForest <- function(logRr, seLogRr, names, xLabel = "Relative risk", title, f
   return(plot)
 }
 
-logRrtoSE <- function(logRr, p, null) {
-  sapply(logRr, function(logRr) {
-    precision <- 0.001
-    if (calibrateP(null, logRr, precision, pValueOnly = TRUE) > p)
-      return(0)
-    L <- 0
-    H <- 100
-    while (H >= L) {
-      M <- L + (H - L)/2
-      if (calibrateP(null, logRr, M, pValueOnly = TRUE) - p > precision)
-        H <- M else if (p - calibrateP(null, logRr, M, pValueOnly = TRUE) > precision)
-          L <- M else return(M)
-    }
-    return(L - 1)
-  })
-}
-
-logRrtoSeLb <- function(logRr, p, null) {
-  sapply(logRr, function(logRr) {
-    precision <- 0.001
-    if (calibrateP(null, logRr, precision, pValueOnly = FALSE)$lb95ci > p)
-      return(0)
-    L <- 0
-    H <- 100
-    while (H >= L) {
-      M <- L + (H - L)/2
-      if (calibrateP(null, logRr, M, pValueOnly = FALSE)$lb95ci - p > precision)
-        H <- M else if (p - calibrateP(null, logRr, M, pValueOnly = FALSE)$lb95ci > precision)
-          L <- M else return(M)
-    }
-    return(L - 1)
-  })
-}
-
-logRrtoSeUb <- function(logRr, p, null) {
-  sapply(logRr, function(logRr) {
-    precision <- 0.001
-    if (calibrateP(null, logRr, precision, pValueOnly = FALSE)$ub95ci > p)
-      return(0)
-    L <- 0
-    H <- 100
-    while (H >= L) {
-      M <- L + (H - L)/2
-      if (calibrateP(null, logRr, M, pValueOnly = FALSE)$ub95ci - p > precision) {
-        H <- M
-      } else if (p - calibrateP(null, logRr, M, pValueOnly = FALSE)$ub95ci > precision) {
-        L <- M
-      } else {
-        return(M)
-      }
-    }
-    return(L - 1)
-  })
+logRrtoSE <- function(logRr, alpha, mu, sigma) {
+  phi <- (mu-logRr)^2/qnorm(alpha/2)^2-sigma^2
+  phi[phi<0] <- 0
+  se <- sqrt(phi)
+  return(se)
 }
 
 #' Plot the effect of the calibration
@@ -169,11 +121,12 @@ logRrtoSeUb <- function(logRr, p, null) {
 #' @param seLogRrPositives   The standard error of the log of the effect estimates of the positive
 #'                           controls.
 #' @param null               An object representing the fitted null distribution as created by the
-#'                           \code{fitNull} function. If not provided, a null will be fitted before
-#'                           plotting.
+#'                           \code{fitNull} or \code{fitMcmcNull} functions. If not provided, a null 
+#'                           will be fitted before plotting.
+#' @param alpha              The alpha for the hypothesis test.                         
 #' @param xLabel             The label on the x-axis: the name of the effect estimate.
 #' @param title              Optional: the main title for the plot
-#' @param showCis            Show 95 percent credible intervals for the calibrated p = 0.05 boundary.
+#' @param showCis            Show 95 percent credible intervals for the calibrated p = alpha boundary.
 #' @param fileName           Name of the file where the plot should be saved, for example 'plot.png'.
 #'                           See the function \code{ggsave} in the ggplot2 package for supported file
 #'                           formats.
@@ -193,6 +146,7 @@ plotCalibrationEffect <- function(logRrNegatives,
                                   logRrPositives,
                                   seLogRrPositives,
                                   null = NULL,
+                                  alpha = 0.05,
                                   xLabel = "Relative risk",
                                   title,
                                   showCis = FALSE,
@@ -208,14 +162,19 @@ plotCalibrationEffect <- function(logRrNegatives,
     stop("Cannot show credible intervals when using asymptotic null. Please use 'fitMcmcNull' to fit the null")
   
   x <- exp(seq(log(0.25), log(10), by = 0.01))
-  y <- logRrtoSE(log(x), 0.05, null)
-  if (showCis) {
-    writeLines("Computing 95% credible interval bounds")
-    yLb <- logRrtoSeLb(log(x), 0.05, null)
-    yUb <- logRrtoSeUb(log(x), 0.05, null)
+  if (is(null, "null")) {
+    y <- logRrtoSE(log(x), alpha, null[1], null[2])
+  } else {
+    chain <- attr(null, "mcmc")$chain
+    matrix <- apply(chain, 1, function(null) logRrtoSE(log(x), alpha, null[1], 1/sqrt(null[2])))
+    ys <- apply(matrix, 1, function(se) quantile(se, c(0.025, 0.50, 0.975), na.rm=TRUE))
+    rm(matrix)
+    y <- ys[2, ]
+    yLb <- ys[1, ]
+    yUb <- ys[3, ]
   }
   seTheoretical <- sapply(x, FUN = function(x) {
-    abs(log(x))/qnorm(0.975)
+    abs(log(x))/qnorm(1-alpha/2)
   })
   breaks <- c(0.25, 0.5, 1, 2, 4, 6, 8, 10)
   theme <- ggplot2::element_text(colour = "#000000", size = 12)
@@ -621,11 +580,12 @@ plotTrueAndObserved <- function(logRr,
 #'                   function \code{ggsave} in the ggplot2 package for supported file formats.
 #'
 #' @examples
+#' \dontrun{
 #' data(sccs)
 #' negatives <- sccs[sccs$groundTruth == 0, ]
 #' null <- fitMcmcNull(negatives$logRr, negatives$seLogRr)
 #' plotMcmcTrace(null)
-#'
+#' }
 #' @export
 plotMcmcTrace <- function(mcmcNull, fileName = NULL) {
   mcmc <- attr(mcmcNull, "mcmc")
@@ -831,5 +791,250 @@ plotErrorModel <- function(logRr, seLogRr, trueLogRr, title, fileName = NULL) {
   }
   if (!is.null(fileName))
     ggplot2::ggsave(fileName, plot, width = 6, height = 4.5, dpi = 400)
+  return(plot)
+}
+
+plotIsobars <- function(null, alpha, xLabel = "Relative risk", seLogRrPositives) {
+  if (is(null, "mcmcNull")) {
+    null <- c(null[1], 1/sqrt(null[2])) 
+  }
+  x <- exp(seq(log(0.25), log(10), by = 0.01))
+  y <- sapply(x, FUN = function(x) abs(log(x))/qnorm(1-alpha/2))
+  thresholds <- c(0.05, 0.25, 0.5, 0.75)
+  isoBars <- lapply(thresholds, function(threshold) data.frame(x = x, 
+                                                               y = logRrtoSE(log(x), threshold, null[1], null[2]), 
+                                                               ymax = y,
+                                                               threshold = threshold))
+  breaks <- c(0.25, 0.5, 1, 2, 4, 6, 8, 10)
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
+  plot <- ggplot2::ggplot(data.frame(x, y),
+                          ggplot2::aes(x = x, y = y),
+                          environment = environment()) +
+    ggplot2::geom_vline(xintercept = breaks, colour = rgb(0,0,0), lty = 1, size = 0.5, alpha = 0.2) +
+    ggplot2::geom_hline(yintercept = 0:4/4, colour = rgb(0,0,0), lty = 1, size = 0.5, alpha = 0.2) +
+    ggplot2::geom_vline(xintercept = 1, size = 1) +
+    ggplot2::geom_line(colour = rgb(0, 0, 0),
+                       linetype = "dashed",
+                       size = 1,
+                       alpha = 0.5) +
+    ggplot2::scale_x_continuous(xLabel,
+                                trans = "log10",
+                                breaks = breaks,
+                                labels = breaks) +
+    ggplot2::scale_y_continuous("Standard Error") +
+    ggplot2::coord_cartesian(xlim = c(0.25, 10), ylim = c(0, 1)) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_rect(fill = "#FAFAFA", colour = NA),
+                   panel.grid.major = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   axis.text.y = themeRA,
+                   axis.text.x = theme,
+                   legend.key = ggplot2::element_blank(),
+                   strip.text.x = theme,
+                   strip.background = ggplot2::element_blank(),
+                   legend.position = "none")
+  for (isoBar in isoBars) {
+    isoBarLeft <- isoBar[isoBar$x < exp(null[1]), ]
+    isoBarRight <- isoBar[isoBar$x > exp(null[1]), ]
+    labelData <- data.frame(x = c(isoBarLeft$x[which.min(abs(isoBarLeft$y - 0.625))],
+                                  isoBarRight$x[which.min(abs(isoBarRight$y - 0.625))]),
+                            y = 0.625,
+                            label = paste0(100*isoBar$threshold[1], "%"))
+    plot <- with(labelData, {plot + ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = y, ymax = ymax),
+      fill = rgb(1, 0.5, 0, alpha=0.2),
+      data = isoBar[isoBar$y < isoBar$ymax, ]) +
+        ggplot2::geom_line(color = rgb(1, 0.5, 0),
+                           size = 1,
+                           alpha = 0.5,            
+                           data = isoBar) +
+        ggplot2::geom_label(ggplot2::aes(label = label),
+                            color = rgb(1, 0.5, 0),
+                            data = labelData) +
+        ggplot2::geom_text(ggplot2::aes(label = label),
+                           data = labelData)})
+  }
+  if (!missing(seLogRrPositives)) {
+    plot <- plot + ggplot2::geom_hline(yintercept = seLogRrPositives)
+  }
+  return(plot)
+}
+
+#' Plot the expected type 1 error as a function of standard error
+#'
+#' @description
+#' \code{plotExpectedType1Error} creates a plot showing the expected type 1 error as a function of standard error.
+#'
+#' @details
+#' Creates a plot with the standard error on the x-axis and the expected type 1 error on the y-axis. The 
+#' red line indicates the expected type 1 error  given the estimated empirical null distribution if no 
+#' calibration is performed. The dashed line indicated the nominal expected type 1 error rate, assuming 
+#' the theoretical null distribution.
+#' 
+#' If standard errors are provided for non-negative estimates these will be plotted on the red line as
+#' yellow diamonds.
+#'
+#' @param logRrNegatives     A numeric vector of effect estimates of the negative controls on the log
+#'                           scale.
+#' @param seLogRrNegatives   The standard error of the log of the effect estimates of the negative
+#'                           controls.
+#' @param seLogRrPositives   The standard error of the log of the effect estimates of the positive
+#'                           controls.
+#' @param alpha              The alpha (nominal type 1 error) to be used.
+#' @param null               An object representing the fitted null distribution as created by the
+#'                           \code{fitNull} function. If not provided, a null will be fitted before
+#'                           plotting.
+#' @param xLabel             If showing effect sizes, what label should be used for the effect size axis?
+#' @param title              Optional: the main title for the plot
+#' @param showCis            Show 95 percent credible intervals for the expected type 1 error.
+#' @param showEffectSizes    Show the expected effect sizes alongside the expected type 1 error?
+#' @param fileName           Name of the file where the plot should be saved, for example 'plot.png'.
+#'                           See the function \code{ggsave} in the ggplot2 package for supported file
+#'                           formats.
+#'
+#' @return
+#' A Ggplot object. Use the \code{ggsave} function to save to file.
+#'
+#' @examples
+#' data(sccs)
+#' negatives <- sccs[sccs$groundTruth == 0, ]
+#' positive <- sccs[sccs$groundTruth == 1, ]
+#' plotExpectedType1Error(negatives$logRr, negatives$seLogRr, positive$seLogRr)
+#'
+#' @export
+plotExpectedType1Error <- function(logRrNegatives,
+                                   seLogRrNegatives,
+                                   seLogRrPositives,
+                                   alpha = 0.05,
+                                   null = NULL,
+                                   xLabel = "Relative risk",
+                                   title,
+                                   showCis = FALSE,
+                                   showEffectSizes = FALSE,
+                                   fileName = NULL) {
+  if (is.null(null)) {
+    if (showCis) {
+      null <- fitMcmcNull(logRrNegatives, seLogRrNegatives)
+    } else {
+      null <- fitNull(logRrNegatives, seLogRrNegatives)
+    }
+  }
+  if (showCis && is(null, "null"))
+    stop("Cannot show credible intervals when using asymptotic null. Please use 'fitMcmcNull' to fit the null")
+  
+  se <- (0:100)/100
+  if (is(null, "null")) {
+    mean <- null[1]
+    sd <- sqrt(se^2 + null[2]^2) 
+    type1Error <- pnorm(qnorm(1-alpha/2, 0, se), mean, sd, lower.tail = FALSE) + 
+      pnorm(qnorm(alpha/2, 0, se), mean, sd, lower.tail = TRUE)
+  } else {
+    computeExpected <- function(se, chain) {
+      mean <- chain[, 1]
+      sd <- sqrt(se^2 + (1/sqrt(chain[, 2]))^2) 
+      type1Error <- pnorm(qnorm(1-alpha/2, 0, se), mean, sd, lower.tail = FALSE) + 
+        pnorm(qnorm(alpha/2, 0, se), mean, sd, lower.tail = TRUE)
+      return(quantile(type1Error, c(0.025, 0.5, 0.975)))
+    }
+    mcmc <- attr(null, "mcmc")
+    estimates <- sapply(se, computeExpected, chain = mcmc$chain)
+    type1Error <- estimates[2, ]
+    lb <- estimates[1, ]
+    ub <- estimates[3, ]
+  }
+  breaks <- 0:4 / 4
+  theme <- ggplot2::element_text(colour = "#000000", size = 12)
+  themeRA <- ggplot2::element_text(colour = "#000000", size = 12, hjust = 1)
+  plot <- ggplot2::ggplot(data.frame(se, type1Error),
+                          ggplot2::aes(x = se, y = type1Error),
+                          environment = environment()) +
+    ggplot2::geom_vline(xintercept = breaks, colour = rgb(0, 0, 0), lty = 1, size = 0.5, alpha = 0.2) +
+    ggplot2::geom_hline(yintercept = breaks, colour = rgb(0, 0, 0), lty = 1, size = 0.5, alpha = 0.2) +
+    ggplot2::geom_hline(yintercept = alpha,
+                        colour = rgb(0, 0, 0),
+                        linetype = "dashed",
+                        size = 1,
+                        alpha = 0.5) +
+    ggplot2::geom_line(color = rgb(0.8, 0, 0),
+                       size = 1,
+                       alpha = 0.5)
+  
+  if (showCis) {
+    plot <- plot +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = lb,
+                                        ymax = ub), fill = rgb(0.8, 0.2, 0.2), alpha = 0.3) +
+      ggplot2::geom_line(ggplot2::aes(y = lb),
+                         colour = rgb(0.8, 0.2, 0.2, alpha = 0.2),
+                         size = 1) +
+      ggplot2::geom_line(ggplot2::aes(y = ub),
+                         colour = rgb(0.8, 0.2, 0.2, alpha = 0.2),
+                         size = 1)
+  }
+  plot <- plot +
+    ggplot2::geom_label(label = paste("alpha ==", alpha), 
+                        data = data.frame(se = 0.875 + showEffectSizes * 0.125, 
+                                          type1Error = alpha + showEffectSizes * 0.04), 
+                        parse = TRUE) +  
+    ggplot2::scale_x_continuous("Standard error",
+                                limits = c(0, 1),
+                                breaks = breaks,
+                                labels = breaks) +
+    ggplot2::scale_y_continuous("Expected type 1 error", 
+                                limits = c(0, 1),
+                                breaks = breaks,
+                                labels = breaks) +
+    ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_rect(fill = "#FAFAFA", colour = NA),
+                   panel.grid.major = ggplot2::element_blank(),
+                   axis.ticks = ggplot2::element_blank(),
+                   axis.text.y = themeRA,
+                   axis.text.x = theme,
+                   legend.key = ggplot2::element_blank(),
+                   strip.text.x = theme,
+                   strip.background = ggplot2::element_blank(),
+                   legend.position = "none")
+  if (!missing(seLogRrPositives)) {
+    yPos <- sapply(seLogRrPositives, FUN = function(x) {type1Error[which.min(abs(x - se))]})
+    posData <- data.frame(x = seLogRrPositives,
+                          y = yPos)
+    plot <- with(posData, {plot + ggplot2::geom_vline(ggplot2::aes(xintercept = x), 
+                                                      data = posData) +
+        ggplot2::geom_point(shape = 23,
+                            ggplot2::aes(x, y),
+                            data = posData,
+                            size = 4,
+                            fill = rgb(1, 1, 0),
+                            alpha = 0.8)
+    })
+  }
+  if (showEffectSizes) {
+    plot <- plot + ggplot2::coord_flip() 
+    plot <- plot + ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                                  axis.title.y = ggplot2::element_blank())
+    plot2 <- plotIsobars(null = null, alpha = alpha, xLabel = xLabel, seLogRrPositives = seLogRrPositives)
+    plots <- list(plot2, plot)
+    grobs <- heights <- list()
+    for (i in 1:length(plots)) {
+      grobs[[i]] <- ggplot2::ggplotGrob(plots[[i]])
+      heights[[i]] <- grobs[[i]]$heights[6:9]
+    }
+    maxHeight <- do.call(grid::unit.pmax, heights)
+    for (i in 1:length(grobs)) {
+      grobs[[i]]$heights[6:9] <- as.list(maxHeight)
+    }
+    if (missing(title)) {
+      title <- NULL
+    }
+    plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]],  nrow = 1, ncol = 2, widths = c(2,1), top = title)
+    if (!is.null(fileName))
+      ggplot2::ggsave(fileName, plot, width = 10, height = 5, dpi = 400)
+  } else {
+    if (!missing(title)) {
+      plot <- plot + ggplot2::ggtitle(title)
+    }
+    if (!is.null(fileName))
+      ggplot2::ggsave(fileName, plot, width = 5, height = 5, dpi = 400)
+  }
   return(plot)
 }
