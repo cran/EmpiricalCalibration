@@ -31,6 +31,9 @@ model
 ## ------------------------------------------------------------------------
 plotErrorModel(controls$logRr, controls$seLogRr, controls$trueLogRr)
 
+## ----fig.width=13, fig.height=2.8, out.width="100%"----------------------
+plotCiCalibrationEffect(controls$logRr, controls$seLogRr, controls$trueLogRr)
+
 ## ------------------------------------------------------------------------
 plotCiCoverage(controls$logRr,
                controls$seLogRr,
