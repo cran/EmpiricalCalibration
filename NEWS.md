@@ -1,3 +1,17 @@
+EmpiricalCalibration 2.0.0
+==========================
+
+NEW FEATURES
+
+* Adding new method for fitting systematic error models that drops the assumption that SD is linear in the log scale, but rather just linear (in the logRr space). Setting that to default, but allowing users to use legacy model if they choose.
+
+EmpiricalCalibration 1.4.1
+==========================
+
+NEW FEATURES
+
+* Added convertNullToErrorModel function to allow confidence interval calibration using only negative controls (requiring the user to make some assumptions).
+
 EmpiricalCalibration 1.4.0
 ==========================
 

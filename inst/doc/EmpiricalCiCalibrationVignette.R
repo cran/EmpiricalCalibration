@@ -25,6 +25,10 @@ controls <- southworthReplication[!is.na(southworthReplication$trueLogRr), ]
 plotTrueAndObserved(controls$logRr, controls$seLogRr, controls$trueLogRr)
 
 ## ------------------------------------------------------------------------
+null <- fitNull(negatives$logRr, negatives$seLogRr)
+model <- convertNullToErrorModel(null)
+
+## ------------------------------------------------------------------------
 model <- fitSystematicErrorModel(controls$logRr, controls$seLogRr, controls$trueLogRr)
 model
 
