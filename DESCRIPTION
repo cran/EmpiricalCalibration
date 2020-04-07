@@ -2,8 +2,8 @@ Package: EmpiricalCalibration
 Type: Package
 Title: Routines for Performing Empirical Calibration of Observational
         Study Estimates
-Version: 2.0.1
-Date: 2020-01-13
+Version: 2.0.2
+Date: 2020-04-07
 Authors@R: c(
   person("Martijn", "Schuemie", , "schuemie@ohdsi.org", role = c("aut", "cre")),
   person("Marc", "Suchard", role = c("aut"))
@@ -24,10 +24,11 @@ License: Apache License 2.0
 URL: https://ohdsi.github.io/EmpiricalCalibration,
         https://github.com/OHDSI/EmpiricalCalibration
 BugReports: https://github.com/OHDSI/EmpiricalCalibration/issues
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
+Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2020-01-13 08:53:47 UTC; MSCHUEMI
+Packaged: 2020-04-07 06:44:03 UTC; MSCHUEMI
 Author: Martijn Schuemie [aut, cre],
   Marc Suchard [aut]
 Repository: CRAN
-Date/Publication: 2020-01-13 09:10:03 UTC
+Date/Publication: 2020-04-07 09:30:03 UTC
