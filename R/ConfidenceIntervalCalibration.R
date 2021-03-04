@@ -1,6 +1,6 @@
 # @file ConfidenceIntervalCalibration.R
 #
-# Copyright 2020 Observational Health Data Sciences and Informatics
+# Copyright 2021 Observational Health Data Sciences and Informatics
 #
 # This file is part of EmpiricalCalibration
 # 
@@ -15,34 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-ll <- function(theta, logRr, seLogRr, trueLogRr) {
-  estimateLl <- function(i) {
-    mean <- theta[1] + theta[2] * trueLogRr[i]
-    sd <- theta[3] + theta[4] * abs(trueLogRr[i])
-    if (sd < 0) {
-      return(Inf)
-    } else {
-      return(-log(gaussianProduct(logRr[i], mean, seLogRr[i], sd)))
-    }
-  }
-  result <- sum(sapply(1:length(logRr), estimateLl))
-  if (is.infinite(result) || is.na(result))
-    result <- 99999
-  result
-}
-
-llLegacy <- function(theta, logRr, seLogRr, trueLogRr) {
-  result <- 0
-  for (i in 1:length(logRr)) {
-    mean <- theta[1] + theta[2] * trueLogRr[i]
-    sd <- exp(theta[3] + theta[4] * trueLogRr[i])
-    result <- result - log(gaussianProduct(logRr[i], mean, seLogRr[i], sd))
-  }
-  if (is.infinite(result) || is.na(result))
-    result <- 99999
-  result
-}
 
 #' Fit a systematic error model
 #'
@@ -104,11 +76,11 @@ fitSystematicErrorModel <- function(logRr,
   
   if (legacy) {
     theta <- c(0, 1, -2, 0)
-    logLikelihood <- llLegacy
+    logLikelihood <- minLogLikelihoodErrorModelLegacy
     parscale <- c(1, 1, 10, 10)
   } else {
     theta <- c(0, 1, 0.1, 0)
-    logLikelihood <- ll
+    logLikelihood <- minLogLikelihoodErrorModel
     parscale <- c(1, 1, 1, 1)
   }
   
@@ -360,7 +332,7 @@ computeTraditionalCi <- function(logRr, seLogRr, ciWidth = .95) {
 #' however, if an estimation method is biased towards the null this assumption will be violated, causing the
 #' calibrated confidence intervals to have lower than nominal coverage.
 #'
-#' @param null         The empirical null distribution fitted using eith the \code{\link{fitNull}}
+#' @param null         The empirical null distribution fitted using either the \code{\link{fitNull}}
 #'                     or the \code{\link{fitMcmcNull}} function.
 #' @param meanSlope    The slope for the mean of the error distribution. A slope of 1 means the error
 #'                     is the same for different values of the true relative risk.
