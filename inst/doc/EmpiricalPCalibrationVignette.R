@@ -56,6 +56,6 @@ plotCalibrationEffect(negatives$logRr,
                       null,
                       showCis = TRUE)
 
-## ----tidy=TRUE,evale=TRUE-----------------------------------------------------
+## ----evale=TRUE---------------------------------------------------------------
 citation("EmpiricalCalibration")
 

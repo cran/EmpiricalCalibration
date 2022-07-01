@@ -49,6 +49,6 @@ ci <- calibrateConfidenceInterval(outcomeOfInterest$logRr, outcomeOfInterest$seL
 ci
 exp(ci[,1:3])
 
-## ----tidy=TRUE,evale=TRUE-----------------------------------------------------
+## ----eval=TRUE----------------------------------------------------------------
 citation("EmpiricalCalibration")
 

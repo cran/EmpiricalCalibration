@@ -5,12 +5,16 @@ gridLlApproximation <- function(x, parameters) {
     .Call('_EmpiricalCalibration_gridLlApproximation', PACKAGE = 'EmpiricalCalibration', x, parameters)
 }
 
-samplePoissonMaxLrr <- function(groupSizes, minimumEvents, sampleSize) {
-    .Call('_EmpiricalCalibration_samplePoissonMaxLrr', PACKAGE = 'EmpiricalCalibration', groupSizes, minimumEvents, sampleSize)
+samplePoissonMaxLrr <- function(groupSizes, minimumEvents, sampleSize, nullMean, nullSd) {
+    .Call('_EmpiricalCalibration_samplePoissonMaxLrr', PACKAGE = 'EmpiricalCalibration', groupSizes, minimumEvents, sampleSize, nullMean, nullSd)
 }
 
-sampleBinomialMaxLrr <- function(groupSizes, p, minimumEvents, sampleSize) {
-    .Call('_EmpiricalCalibration_sampleBinomialMaxLrr', PACKAGE = 'EmpiricalCalibration', groupSizes, p, minimumEvents, sampleSize)
+sampleBinomialMaxLrr <- function(groupSizes, p, minimumEvents, sampleSize, nullMean, nullSd) {
+    .Call('_EmpiricalCalibration_sampleBinomialMaxLrr', PACKAGE = 'EmpiricalCalibration', groupSizes, p, minimumEvents, sampleSize, nullMean, nullSd)
+}
+
+samplePoissonRegressionMaxLrr <- function(groupSizes, z, minimumEvents, sampleSize) {
+    .Call('_EmpiricalCalibration_samplePoissonRegressionMaxLrr', PACKAGE = 'EmpiricalCalibration', groupSizes, z, minimumEvents, sampleSize)
 }
 
 logLikelihoodNull <- function(theta, logRr, seLogRr) {

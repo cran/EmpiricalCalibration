@@ -1,11 +1,22 @@
 ## ---- echo = FALSE, message = FALSE, warning = FALSE--------------------------
 library(EmpiricalCalibration)
-cvs <- readRDS("cvs.rds")
-allLlrs <- readRDS("allLlrs.rds")
+allCvsAndLlrs <- readRDS("allCvsAndLlrs.rds")
 set.seed(123)
 
 ## -----------------------------------------------------------------------------
-maxSprtSimulationData <- simulateMaxSprtData()
+maxSprtSimulationData <- simulateMaxSprtData(
+  n = 10000,
+  pExposure = 0.5,
+  backgroundHazard = 0.001,
+  tar = 10,
+  nullMu = 0.2,
+  nullSigma = 0.2,
+  maxT = 100,
+  looks = 10,
+  numberOfNegativeControls = 50,
+  numberOfPositiveControls = 1,
+  positiveControlEffectSize = 4
+)
 head(maxSprtSimulationData)
 
 ## ----warning=FALSE------------------------------------------------------------
@@ -15,9 +26,11 @@ library(survival)
 dataOutcome51 <- maxSprtSimulationData[maxSprtSimulationData$outcomeId == 51, ]
 dataOutcome51LookT50 <- dataOutcome51[dataOutcome51$lookTime == 50, ]
 
-cyclopsData <- createCyclopsData(Surv(time, outcome) ~ exposure , 
-                                 modelType = "cox", 
-                                 data = dataOutcome51LookT50)
+cyclopsData <- createCyclopsData(
+  Surv(time, outcome) ~ exposure , 
+  modelType = "cox", 
+  data = dataOutcome51LookT50
+)
 fit <- fitCyclopsModel(cyclopsData)
 coef(fit)
 
@@ -26,9 +39,11 @@ coef(fit)
 fit$log_likelihood
 
 ## -----------------------------------------------------------------------------
-llNull <- getCyclopsProfileLogLikelihood(object = fit,
-                                         parm = "exposureTRUE",
-                                         x = 0)$value
+llNull <- getCyclopsProfileLogLikelihood(
+  object = fit,
+  parm = "exposureTRUE",
+  x = 0
+)$value
 llNull
 
 ## -----------------------------------------------------------------------------
@@ -49,33 +64,46 @@ exposedTime <- sum(dataOutcome51$time[dataOutcome51$exposure == TRUE &
                                         dataOutcome51$lookTime == 100])
 unexposedTime <- sum(dataOutcome51$time[dataOutcome51$exposure == FALSE & 
                                           dataOutcome51$lookTime == 100])
-cv <- computeCvBinomial(groupSizes = outcomesPerLook,
-                        z = unexposedTime / exposedTime,
-                        minimumEvents = 1,
-                        alpha = 0.05)
+cv <- computeCvBinomial(
+  groupSizes = outcomesPerLook,
+  z = unexposedTime / exposedTime,
+  minimumEvents = 1,
+  alpha = 0.05
+)
 cv
 
 ## -----------------------------------------------------------------------------
 llr > cv
 
 ## -----------------------------------------------------------------------------
-llProfileOutcome51LookT50 <- getCyclopsProfileLogLikelihood(object = fit,
-                                                            parm = "exposureTRUE",
-                                                            bounds = log(c(0.1, 10)))
+llProfileOutcome51LookT50 <- getCyclopsProfileLogLikelihood(
+  object = fit,
+  parm = "exposureTRUE",
+  bounds = log(c(0.1, 10))
+)
 head(llProfileOutcome51LookT50)
+
+## -----------------------------------------------------------------------------
+library(ggplot2)
+ggplot(llProfileOutcome51LookT50, aes(x = point, y = value)) +
+  geom_line()
 
 ## -----------------------------------------------------------------------------
 negativeControlProfilesLookT50 <- list()
 dataLookT50 <- maxSprtSimulationData[maxSprtSimulationData$lookTime == 50, ]
 for (i in 1:50) {
   dataOutcomeIlookT50 <- dataLookT50[dataLookT50$outcomeId == i, ]
-  cyclopsData <- createCyclopsData(Surv(time, outcome) ~ exposure , 
-                                   modelType = "cox", 
-                                   data = dataOutcomeIlookT50)
+  cyclopsData <- createCyclopsData(
+    Surv(time, outcome) ~ exposure , 
+    modelType = "cox", 
+    data = dataOutcomeIlookT50
+  )
   fit <- fitCyclopsModel(cyclopsData)
-  llProfile <- getCyclopsProfileLogLikelihood(object = fit,
-                                              parm = "exposureTRUE",
-                                              bounds = log(c(0.1, 10)))
+  llProfile <- getCyclopsProfileLogLikelihood(
+    object = fit,
+    parm = "exposureTRUE",
+    bounds = log(c(0.1, 10))
+  )
   negativeControlProfilesLookT50[[i]] <- llProfile
 }
 
@@ -84,57 +112,49 @@ nullLookT50 <- fitNullNonNormalLl(negativeControlProfilesLookT50)
 nullLookT50
 
 ## -----------------------------------------------------------------------------
-calibratedLlr <- calibrateLlr(null = nullLookT50,
-                              likelihoodApproximation = llProfileOutcome51LookT50)
-calibratedLlr
+calibratedCv <- computeCvBinomial(
+  groupSizes = outcomesPerLook,
+  z = unexposedTime / exposedTime,
+  minimumEvents = 1,
+  alpha = 0.05,
+  nullMean = nullLookT50[1],
+  nullSd = nullLookT50[2]
+)
+calibratedCv
 
 ## -----------------------------------------------------------------------------
-calibratedLlr > cv
+llr > calibratedCv
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  allLlrs <- data.frame()
+#  allCvsAndLlrs <- data.frame()
 #  for (t in unique(maxSprtSimulationData$lookTime)) {
 #  
-#    # Compute likelihood profiles for all negative controls:
+#    # Compute likelihood profiles and LLR for all negative controls:
 #    negativeControlProfilesLookTt <- list()
+#    llrsLookTt <- c()
 #    dataLookTt <- maxSprtSimulationData[maxSprtSimulationData$lookTime == t, ]
 #    for (i in 1:50) {
 #      dataOutcomeIlookTt <- dataLookTt[dataLookTt$outcomeId == i, ]
-#      cyclopsData <- createCyclopsData(Surv(time, outcome) ~ exposure ,
-#                                       modelType = "cox",
-#                                       data = dataOutcomeIlookTt)
+#      cyclopsData <- createCyclopsData(Surv(time, outcome) ~ exposure,
+#        modelType = "cox",
+#        data = dataOutcomeIlookTt
+#      )
 #      fit <- fitCyclopsModel(cyclopsData)
-#      llProfile <- getCyclopsProfileLogLikelihood(object = fit,
-#                                                  parm = "exposureTRUE",
-#                                                  bounds = log(c(0.1, 10)))
+#  
+#      # likelihood profile:
+#      llProfile <- getCyclopsProfileLogLikelihood(
+#        object = fit,
+#        parm = "exposureTRUE",
+#        bounds = log(c(0.1, 10))
+#      )
 #      negativeControlProfilesLookTt[[i]] <- llProfile
-#    }
 #  
-#    # Fit null distribution:
-#    nullLookTt <- fitNullNonNormalLl(negativeControlProfilesLookTt)
-#  
-#    # Compute calibrated and uncalibrated LLRs for all negative controls:
-#    llrsLookTt <- c()
-#    calibratedLlrsLookTt <- c()
-#    for (i in 1:50) {
-#      dataOutcomeIlookTt <- dataLookTt[dataLookTt$outcomeId == i, ]
-#      cyclopsData <- createCyclopsData(Surv(time, outcome) ~ exposure ,
-#                                       modelType = "cox",
-#                                       data = dataOutcomeIlookTt)
-#      fit <- fitCyclopsModel(cyclopsData)
-#      llProfile <- getCyclopsProfileLogLikelihood(object = fit,
-#                                                  parm = "exposureTRUE",
-#                                                  bounds = log(c(0.1, 10)))
-#  
-#      # Calibrated LLR:
-#      calibrateLlr <- calibrateLlr(null = nullLookTt,
-#                   likelihoodApproximation = llProfile)
-#      calibratedLlrsLookTt[i] <- calibrateLlr
-#  
-#      # Uncalibrated LLR:
-#      llNull <- getCyclopsProfileLogLikelihood(object = fit,
-#                                               parm = "exposureTRUE",
-#                                               x = 0)$value
+#      # LLR:
+#      llNull <- getCyclopsProfileLogLikelihood(
+#        object = fit,
+#        parm = "exposureTRUE",
+#        x = 0
+#      )$value
 #      if (fit$return_flag == "ILLCONDITIONED" || coef(fit) < 0) {
 #        llr <- 0
 #      } else {
@@ -143,43 +163,65 @@ calibratedLlr > cv
 #      llrsLookTt[i] <- llr
 #    }
 #  
+#    # Fit null distribution:
+#    nullLookTt <- fitNullNonNormalLl(negativeControlProfilesLookTt)
+#  
+#    # Compute calibrated and uncalibrated CV for all negative controls:
+#    cvs <- c()
+#    calibratedCvsLookT <- c()
+#    for (i in 1:50) {
+#      dataOutcomeI <- maxSprtSimulationData[maxSprtSimulationData$outcomeId == i, ]
+#      outcomesPerLook <- aggregate(outcome ~ lookTime, dataOutcomeI, sum)
+#      # Need incremental outcomes per look:
+#      outcomesPerLook <- outcomesPerLook$outcome[order(outcomesPerLook$lookTime)]
+#      outcomesPerLook[2:10] <- outcomesPerLook[2:10] - outcomesPerLook[1:9]
+#  
+#      exposedTime <- sum(dataOutcomeI$time[dataOutcomeI$exposure == TRUE &
+#                                             dataOutcomeI$lookTime == 100])
+#      unexposedTime <- sum(dataOutcomeI$time[dataOutcomeI$exposure == FALSE &
+#                                               dataOutcomeI$lookTime == 100])
+#  
+#      # Note: uncalibrated CV will be same for every t, but computing in loop
+#      # over t for clarity of code:
+#      cv <- computeCvBinomial(
+#        groupSizes = outcomesPerLook,
+#        z = unexposedTime / exposedTime,
+#        minimumEvents = 1,
+#        alpha = 0.05
+#      )
+#      cvs[i] <- cv
+#  
+#      calibratedCv <- computeCvBinomial(
+#        groupSizes = outcomesPerLook,
+#        z = unexposedTime / exposedTime,
+#        minimumEvents = 1,
+#        alpha = 0.05,
+#        nullMean = nullLookTt[1],
+#        nullSd = nullLookTt[2]
+#      )
+#      calibratedCvsLookT[i] <- calibratedCv
+#    }
+#  
 #    # Store in a data frame:
-#    allLlrs <- rbind(allLlrs,
-#                     data.frame(t = t,
-#                                outcomeId = 1:50,
-#                                llr = llrsLookTt,
-#                                calibrateLlr = calibratedLlrsLookTt))
-#  
+#    allCvsAndLlrs <- rbind(
+#      allCvsAndLlrs,
+#      data.frame(
+#        t = t,
+#        outcomeId = 1:50,
+#        llr = llrsLookTt,
+#        cv = cvs,
+#        calibrateCv = calibratedCvsLookT
+#      )
+#    )
 #  }
-
-## ----eval=FALSE---------------------------------------------------------------
-#  cvs <- c()
-#  for (i in 1:50) {
-#    dataOutcomeI <- maxSprtSimulationData[maxSprtSimulationData$outcomeId == i, ]
-#    outcomesPerLook <- aggregate(outcome ~ lookTime, dataOutcomeI, sum)
-#    # Need incremental outcomes per look:
-#    outcomesPerLook <- outcomesPerLook$outcome[order(outcomesPerLook$lookTime)]
-#    outcomesPerLook[2:10] <- outcomesPerLook[2:10] - outcomesPerLook[1:9]
-#  
-#    exposedTime <- sum(dataOutcomeI$time[dataOutcomeI$exposure == TRUE &
-#                                           dataOutcomeI$lookTime == 100])
-#    unexposedTime <- sum(dataOutcomeI$time[dataOutcomeI$exposure == FALSE &
-#                                              dataOutcomeI$lookTime == 100])
-#    cv <- computeCvBinomial(groupSizes = outcomesPerLook,
-#                            z = unexposedTime / exposedTime,
-#                            minimumEvents = 1,
-#                            alpha = 0.05)
-#    cvs[i] <- cv
-#  }
-#  
 
 ## -----------------------------------------------------------------------------
 signals <- c()
 calibratedSignals <- c()
 for (i in 1:50) {
-  cv <- cvs[i]
-  signals[i] <- any(allLlrs$llr[allLlrs$outcomeId == i] > cv)
-  calibratedSignals[i] <- any(allLlrs$calibrateLlr[allLlrs$outcomeId == i] > cv)
+  idx <- allCvsAndLlrs$outcomeId == i
+  signals[i] <- any(allCvsAndLlrs$llr[idx] > allCvsAndLlrs$cv[idx])
+  calibratedSignals[i] <-  any(allCvsAndLlrs$llr[idx] > allCvsAndLlrs$calibrateCv[idx])
 }
 # Type 1 error when not calibrated (should be 0.05):
 mean(signals)

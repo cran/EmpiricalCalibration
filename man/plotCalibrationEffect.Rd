@@ -15,7 +15,9 @@ plotCalibrationEffect(
   title,
   showCis = FALSE,
   showExpectedAbsoluteSystematicError = FALSE,
-  fileName = NULL
+  fileName = NULL,
+  xLimits = c(0.25, 10),
+  yLimits = c(0, 1.5)
 )
 }
 \arguments{
@@ -32,7 +34,7 @@ scale.}
 controls.}
 
 \item{null}{An object representing the fitted null distribution as created by the
-\code{fitNull} or \code{fitMcmcNull} functions. If not provided, a null 
+\code{fitNull} or \code{fitMcmcNull} functions. If not provided, a null
 will be fitted before plotting.}
 
 \item{alpha}{The alpha for the hypothesis test.}
@@ -43,12 +45,16 @@ will be fitted before plotting.}
 
 \item{showCis}{Show 95 percent credible intervals for the calibrated p = alpha boundary.}
 
-\item{showExpectedAbsoluteSystematicError}{Show the expected absolute systematic error. If \code{null} is of 
+\item{showExpectedAbsoluteSystematicError}{Show the expected absolute systematic error. If \code{null} is of
 type \code{mcmcNull} the 95 percent credible interval will also be shown.}
 
 \item{fileName}{Name of the file where the plot should be saved, for example 'plot.png'.
 See the function \code{ggsave} in the ggplot2 package for supported file
 formats.}
+
+\item{xLimits}{Vector of length 2 for limits of the plot x axis - defaults to 0.25, 10}
+
+\item{yLimits}{Vector of length 2 for size limits of the y axis - defaults to 0, 1.5}
 }
 \value{
 A Ggplot object. Use the \code{ggsave} function to save to file.

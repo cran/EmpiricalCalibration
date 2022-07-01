@@ -3,7 +3,7 @@
  *
  * This file is part of EmpiricalCalibration
  *
- * Copyright 2021 Observational Health Data Sciences and Informatics
+ * Copyright 2022 Observational Health Data Sciences and Informatics
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,19 +53,21 @@ NumericVector gridLlApproximation(NumericVector& x, const DataFrame& parameters)
 }
 
 // [[Rcpp::export]]
-NumericVector samplePoissonMaxLrr(NumericVector groupSizes, int minimumEvents, int sampleSize) {
+NumericVector samplePoissonMaxLrr(NumericVector groupSizes, int minimumEvents, int sampleSize, double nullMean, double nullSd) {
   NumericVector values(sampleSize);
   double expected;
   double observed;
   double maxLlr;
+  double systematicError;
   double llr;
   for (int i = 0; i < sampleSize; i++) {
     maxLlr = 0;
     observed = 0;
     expected = 0;
+    systematicError = exp(R::rnorm(nullMean, nullSd));
     for (unsigned int j = 0; j < groupSizes.size(); j++) {
       expected += groupSizes[j];
-      observed += R::rpois(groupSizes[j]);
+      observed += R::rpois(groupSizes[j] * systematicError);
       if (observed >= minimumEvents && observed >= expected) {
         llr = R::dpois(observed, observed, true) - R::dpois(observed, expected, true);
         if (llr > maxLlr)
@@ -78,19 +80,21 @@ NumericVector samplePoissonMaxLrr(NumericVector groupSizes, int minimumEvents, i
 }
 
 // [[Rcpp::export]]
-NumericVector sampleBinomialMaxLrr(NumericVector groupSizes, double p, int minimumEvents, int sampleSize) {
+NumericVector sampleBinomialMaxLrr(NumericVector groupSizes, double p, int minimumEvents, int sampleSize, double nullMean, double nullSd) {
   NumericVector values(sampleSize);
   double cumulativeCount;
   double cumulativeObserved;
   double maxLlr;
+  double systematicError;
   double llr;
   for (int i = 0; i < sampleSize; i++) {
     maxLlr = 0;
     cumulativeObserved = 0;
     cumulativeCount = 0;
+    systematicError = exp(R::rnorm(nullMean, nullSd));
     for (unsigned int j = 0; j < groupSizes.size(); j++) {
       cumulativeCount += groupSizes[j];
-      cumulativeObserved += R::rbinom(groupSizes[j], p);
+      cumulativeObserved += R::rbinom(groupSizes[j], p * systematicError / (1 + p * (systematicError - 1)));
       if (cumulativeObserved >= minimumEvents && cumulativeObserved >= cumulativeCount * p) {
         llr = R::dbinom(cumulativeObserved, cumulativeCount, cumulativeObserved / cumulativeCount, true) -
           R::dbinom(cumulativeObserved, cumulativeCount, p, true);
@@ -102,6 +106,40 @@ NumericVector sampleBinomialMaxLrr(NumericVector groupSizes, double p, int minim
   }
   return(values);
 }
+
+// [[Rcpp::export]]
+NumericVector samplePoissonRegressionMaxLrr(NumericVector groupSizes, double z, int minimumEvents, int sampleSize) {
+  NumericVector values(sampleSize);
+  double observed1;
+  double observed2;
+  double maxLlr;
+  double llr;
+  double lambda1;
+  double lambda2;
+  double expected1;
+  for (int i = 0; i < sampleSize; i++) {
+    maxLlr = 0;
+    observed1 = 0;
+    observed2 = 0;
+    for (unsigned int j = 0; j < groupSizes.size(); j++) {
+      lambda1 = groupSizes[j] / (z + 1);
+      lambda2 = lambda1 * z;
+      observed1 += R::rpois(lambda1);
+      observed2 += R::rpois(lambda2);
+      if (observed1 >= minimumEvents && observed2 / observed1 < z) {
+        expected1 = (observed1 + observed2) / (z + 1);
+        llr = (R::dpois(observed1, observed1, true) + R::dpois(observed2, observed2, true)) -
+          (R::dpois(observed1, expected1, true) + R::dpois(observed2, expected1 * z, true));
+        if (llr > maxLlr)
+          maxLlr = llr;
+      }
+      values[i] = maxLlr;
+    }
+  }
+  return(values);
+}
+
+
 double sqr(const double& x) {
   return(x*x);
 }
