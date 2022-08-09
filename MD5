@@ -1,6 +1,6 @@
-25976dbfda306372cfa2131011695e0d *DESCRIPTION
+464db3d67d527bb386c860f4da256f74 *DESCRIPTION
 0578fe1c1fc70c3229a9712e118393cb *NAMESPACE
-6688b82ab6761e77422296f1a44d8b20 *NEWS.md
+a318a3aab59d577a614c65b61db599ff *NEWS.md
 37ef5306f800b968d270c95b13282284 *R/ConfidenceIntervalCalibration.R
 f5d018ce2dbe8e7c820d092475788e0c *R/Data.R
 5373a4ce33ca643b2a9e397d778230ea *R/EmpiricalCalibration.R
@@ -25,13 +25,13 @@ d63732c8c027cf4132b2566b62f2c230 *data/southworthReplication.rda
 059ff67480a69588382c3fec59dab7ac *inst/CITATION
 5a9fc89dec67f2315e68b1977d11e6b2 *inst/doc/EmpiricalCiCalibrationVignette.R
 c703098fec4bc25c8e5a347248d643c0 *inst/doc/EmpiricalCiCalibrationVignette.Rmd
-e53f021f4326b178a306de1e154c6e2f *inst/doc/EmpiricalCiCalibrationVignette.pdf
-c059dd413b61c75f9c6f65df356df936 *inst/doc/EmpiricalMaxSprtCalibrationVignette.R
-930bd4c50f5518f74a9872a4539c5aaa *inst/doc/EmpiricalMaxSprtCalibrationVignette.Rmd
-fd202106b3b64a02ec447b0c82aa1665 *inst/doc/EmpiricalMaxSprtCalibrationVignette.pdf
+538b0db843b9e5e42592476cd8c1a788 *inst/doc/EmpiricalCiCalibrationVignette.pdf
+5f6126cecf47102789642d991c882e06 *inst/doc/EmpiricalMaxSprtCalibrationVignette.R
+81283e1e0c82042dd73c37363c7384ce *inst/doc/EmpiricalMaxSprtCalibrationVignette.Rmd
+ebea9bea491b703872c6cb404f959fbc *inst/doc/EmpiricalMaxSprtCalibrationVignette.pdf
 e721460269a92107b1ef7dd8bc5c81d4 *inst/doc/EmpiricalPCalibrationVignette.R
 6ffc60e16249f3d084059c43ddc11da5 *inst/doc/EmpiricalPCalibrationVignette.Rmd
-c8a41814f5e6765930bcf97de2c3199e *inst/doc/EmpiricalPCalibrationVignette.pdf
+af19ada22909bcc84fbc896bb5d67c3c *inst/doc/EmpiricalPCalibrationVignette.pdf
 936bc0febe3c01d033c53c6e91d2d548 *man/EmpiricalCalibration-package.Rd
 0adca1710597dff4cb35a8dd6bd4f954 *man/calibrateConfidenceInterval.Rd
 76017fdd3a71bafa090fb01b45597998 *man/calibrateLlr.Rd
@@ -73,7 +73,7 @@ fb52b7bb06cb776f194bfb5d95d3479f *src/RcppWrapper.cpp
 28f7872749cb9e013babf672d50d4314 *tests/testthat/test-LlrCalibration.R
 554efd23101db06ef5b7c0aedef92e40 *tests/testthat/test-asymptoticNull.R
 7fc0fe9dc59d845398d1596f09d62369 *tests/testthat/test-confidenceIntervalCalibration.R
-0f4edaff5f0d70248fe89908a69a481f *tests/testthat/test-critical-values.R
+a895fd2dcfc4e25d3e7fccde657622c8 *tests/testthat/test-critical-values.R
 470b65d9375fc6020b0dcd10e8694b7c *tests/testthat/test-empiricalCalibrationUsingMcmc.R
 5385f34759bdf850cf529ce8e1a13b96 *tests/testthat/test-evaluation.R
 98e6ecbb7a015ef3461364a88f5b1c03 *tests/testthat/test-expected-systematic-error.R
@@ -81,6 +81,6 @@ fb52b7bb06cb776f194bfb5d95d3479f *src/RcppWrapper.cpp
 336a4e119717e60044dedf65e22a6a2f *tests/testthat/test-plots.R
 4fdc5f5078ef6034586b26fa6c038f3a *tests/testthat/test-simulation.R
 c703098fec4bc25c8e5a347248d643c0 *vignettes/EmpiricalCiCalibrationVignette.Rmd
-930bd4c50f5518f74a9872a4539c5aaa *vignettes/EmpiricalMaxSprtCalibrationVignette.Rmd
+81283e1e0c82042dd73c37363c7384ce *vignettes/EmpiricalMaxSprtCalibrationVignette.Rmd
 6ffc60e16249f3d084059c43ddc11da5 *vignettes/EmpiricalPCalibrationVignette.Rmd
 3b79b7ca5c226550d3e887a08faeb55f *vignettes/allCvsAndLlrs.rds

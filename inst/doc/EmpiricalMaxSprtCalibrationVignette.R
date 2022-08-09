@@ -3,7 +3,10 @@ library(EmpiricalCalibration)
 allCvsAndLlrs <- readRDS("allCvsAndLlrs.rds")
 set.seed(123)
 
-## -----------------------------------------------------------------------------
+doEval <- require("Cyclops", quietly = TRUE)
+cv <- NA
+
+## ----eval=doEval--------------------------------------------------------------
 maxSprtSimulationData <- simulateMaxSprtData(
   n = 10000,
   pExposure = 0.5,
@@ -19,7 +22,7 @@ maxSprtSimulationData <- simulateMaxSprtData(
 )
 head(maxSprtSimulationData)
 
-## ----warning=FALSE------------------------------------------------------------
+## ----warning=FALSE,eval=doEval------------------------------------------------
 library(Cyclops)
 library(survival)
 
@@ -34,11 +37,11 @@ cyclopsData <- createCyclopsData(
 fit <- fitCyclopsModel(cyclopsData)
 coef(fit)
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 # Maximum log likelihood:
 fit$log_likelihood
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 llNull <- getCyclopsProfileLogLikelihood(
   object = fit,
   parm = "exposureTRUE",
@@ -46,7 +49,7 @@ llNull <- getCyclopsProfileLogLikelihood(
 )$value
 llNull
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 if (fit$return_flag == "ILLCONDITIONED" || coef(fit) < 0) {
   llr <- 0
 } else {
@@ -54,7 +57,7 @@ if (fit$return_flag == "ILLCONDITIONED" || coef(fit) < 0) {
 }
 llr
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 outcomesPerLook <- aggregate(outcome ~ lookTime, dataOutcome51, sum)
 # Need incremental outcomes per look:
 outcomesPerLook <- outcomesPerLook$outcome[order(outcomesPerLook$lookTime)]
@@ -72,10 +75,10 @@ cv <- computeCvBinomial(
 )
 cv
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 llr > cv
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 llProfileOutcome51LookT50 <- getCyclopsProfileLogLikelihood(
   object = fit,
   parm = "exposureTRUE",
@@ -83,12 +86,12 @@ llProfileOutcome51LookT50 <- getCyclopsProfileLogLikelihood(
 )
 head(llProfileOutcome51LookT50)
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 library(ggplot2)
 ggplot(llProfileOutcome51LookT50, aes(x = point, y = value)) +
   geom_line()
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 negativeControlProfilesLookT50 <- list()
 dataLookT50 <- maxSprtSimulationData[maxSprtSimulationData$lookTime == 50, ]
 for (i in 1:50) {
@@ -107,11 +110,11 @@ for (i in 1:50) {
   negativeControlProfilesLookT50[[i]] <- llProfile
 }
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 nullLookT50 <- fitNullNonNormalLl(negativeControlProfilesLookT50)
 nullLookT50
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 calibratedCv <- computeCvBinomial(
   groupSizes = outcomesPerLook,
   z = unexposedTime / exposedTime,
@@ -122,7 +125,7 @@ calibratedCv <- computeCvBinomial(
 )
 calibratedCv
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 llr > calibratedCv
 
 ## ----eval=FALSE---------------------------------------------------------------
@@ -215,7 +218,7 @@ llr > calibratedCv
 #    )
 #  }
 
-## -----------------------------------------------------------------------------
+## ----eval=doEval--------------------------------------------------------------
 signals <- c()
 calibratedSignals <- c()
 for (i in 1:50) {
