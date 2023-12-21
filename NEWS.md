@@ -1,3 +1,13 @@
+EmpiricalCalibration 3.1.2
+==========================
+
+Bugfixes
+
+1. Allowing `fitNull()` to work with many estimates (n > 1000).
+
+2. Fixed edge case where `fitMcmcNull()` would get stuck in an infinite loop.
+
+
 EmpiricalCalibration 3.1.1
 ==========================
 
