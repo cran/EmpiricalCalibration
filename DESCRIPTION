@@ -2,8 +2,8 @@ Package: EmpiricalCalibration
 Type: Package
 Title: Routines for Performing Empirical Calibration of Observational
         Study Estimates
-Version: 3.1.3
-Date: 2024-09-30
+Version: 3.1.4
+Date: 2025-02-14
 Authors@R: c(
   person("Martijn", "Schuemie", , "schuemie@ohdsi.org", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-0817-5361")),
   person("Marc", "Suchard", role = c("aut"), comment = c(ORCID = "0000-0001-9818-479X"))
@@ -32,8 +32,8 @@ URL: https://ohdsi.github.io/EmpiricalCalibration/,
 BugReports: https://github.com/OHDSI/EmpiricalCalibration/issues
 RoxygenNote: 7.3.2
 Encoding: UTF-8
-Packaged: 2024-09-30 06:09:53 UTC; schuemie
+Packaged: 2025-02-14 15:45:38 UTC; schuemie
 Author: Martijn Schuemie [aut, cre] (<https://orcid.org/0000-0002-0817-5361>),
   Marc Suchard [aut] (<https://orcid.org/0000-0001-9818-479X>)
 Repository: CRAN
-Date/Publication: 2024-09-30 06:50:02 UTC
+Date/Publication: 2025-02-14 16:30:02 UTC

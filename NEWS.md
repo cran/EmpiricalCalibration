@@ -1,3 +1,16 @@
+EmpiricalCalibration 3.1.4
+==========================
+
+Changes
+
+1. Removing extreme estimates (relative risk < 0.01 or relative risk > 100) before fitting null distribution.
+
+
+Bugfixes
+
+1. Changed initial parameter values when fitting null distribution using asymptotics and MCMC, avoid errors in some edge cases.
+
+
 EmpiricalCalibration 3.1.3
 ==========================
 

@@ -1,6 +1,6 @@
 # @file EmpiricalCalibrationUsingAsymptotics.R
 #
-# Copyright 2022 Observational Health Data Sciences and Informatics
+# Copyright 2025 Observational Health Data Sciences and Informatics
 #
 # This file is part of EmpiricalCalibration
 #
@@ -66,11 +66,16 @@ fitNull <- function(logRr, seLogRr) {
     seLogRr <- seLogRr[!is.na(logRr)]
     logRr <- logRr[!is.na(logRr)]
   }
+  if (any(abs(logRr) > log(100))) {
+    warning("Estimate(s) with extreme logRr detected: abs(logRr) > log(100). Removing before fitting null distribution")
+    seLogRr <- seLogRr[abs(logRr) <= log(100)]
+    logRr <- logRr[abs(logRr) <= log(100)]
+  }
   if (length(logRr) == 0) {
     warning("No estimates remaining")
     null <- c(NA, NA)
   } else {
-    theta <- c(0, 100)
+    theta <- c(0, 1)
     fit <- optim(theta, logLikelihoodNull, logRr = logRr, seLogRr = seLogRr)
     null <- fit$par
     null[2] <- 1 / sqrt(null[2])
@@ -269,7 +274,7 @@ fitNullNonNormalLl <- function(likelihoodApproximations) {
     }
   }
   
-  theta <- c(0, 100)
+  theta <- c(0, 1)
   fit <- optim(
     par = theta,
     fn = logLikelihoodNullNonNormalLl,
